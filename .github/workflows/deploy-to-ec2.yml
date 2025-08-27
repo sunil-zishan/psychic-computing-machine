@@ -1,0 +1,61 @@
+name: Deploy static site to EC2
+
+on:
+  push:
+    branches: [ "main" ]
+    paths:
+      - "index.html"
+      - "style.css"
+      - "main.js"
+
+concurrency:
+  group: deploy-ec2
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Prepare EC2 server
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          fingerprint: ${{ secrets.EC2_HOST_FINGERPRINT }}
+          script: |
+            set -e
+            sudo apt-get update -y
+            sudo apt-get install -y rsync nginx
+            sudo systemctl enable --now nginx
+            sudo mkdir -p /var/www/html
+            mkdir -p ~/site_build
+
+      - name: Upload static files
+        uses: appleboy/scp-action@v1
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          fingerprint: ${{ secrets.EC2_HOST_FINGERPRINT }}
+          source: "index.html,style.css,main.js"
+          target: "~/site_build"
+
+      - name: Deploy to Nginx root
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          fingerprint: ${{ secrets.EC2_HOST_FINGERPRINT }}
+          script: |
+            set -e
+            sudo rsync -a --delete ~/site_build/ ${{ secrets.EC2_PATH }}/
+            sudo chmod -R a+r ${{ secrets.EC2_PATH }}/
+            sudo systemctl reload nginx
