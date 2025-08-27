@@ -3,7 +3,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const messages = [
     "> Initializing neural clairvoyance protocol...",
     "> Scanning quantum ether for anomalies...",
-    "> Prediction engine online.",
+    "> Prediction engine online...",
     "> Your future is being computed...",
     "",
     "[Access denied: You’re not ready yet]"
